@@ -1,0 +1,67 @@
+#pragma once
+
+#include <stddef.h>
+#include <stdbool.h>
+
+#include "edu_cmp.h"
+#include "edu_print.h"
+
+typedef struct edu_vec edu_vec;
+
+// create/destroy
+
+edu_vec *edu_vec_create(size_t size, size_t elem_size);
+
+edu_vec *edu_vec_create_cap(size_t cap, size_t elem_size);
+
+void edu_vec_destroy(edu_vec *vec);
+
+// info
+
+size_t edu_vec_size(const edu_vec *vec);
+
+bool edu_vec_empty(const edu_vec *vec);
+
+size_t edu_vec_cap(const edu_vec *vec);
+
+size_t edu_vec_elem_size(const edu_vec *vec);
+
+// access
+
+void *edu_vec_get(edu_vec *vec, size_t idx);
+
+const void *edu_vec_get_const(const edu_vec *vec, size_t idx);
+
+void edu_vec_set(edu_vec *vec, size_t idx, const void *elem);
+
+void *edu_vec_buf(edu_vec *vec);
+
+const void *edu_vec_buf_const(const edu_vec *vec);
+
+// mods
+
+bool edu_vec_push(edu_vec *vec, const void *elem);
+
+bool edu_vec_pop(edu_vec *vec, void *out);
+
+void edu_vec_clear(edu_vec *vec);
+
+bool edu_vec_reserve(edu_vec *vec, size_t new_cap);
+
+bool edu_vec_resize(edu_vec *vec, size_t new_size);
+
+bool edu_vec_shrink_to_fit(edu_vec *vec);
+
+void edu_vec_fill(edu_vec *vec, const void *elem);
+
+void edu_vec_swap(edu_vec *a, edu_vec *b);
+
+// relations
+
+bool edu_vec_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp);
+
+bool edu_vec_not_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp);
+
+// print
+
+void edu_vec_print(const edu_vec *vec, edu_print_func f);
