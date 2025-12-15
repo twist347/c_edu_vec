@@ -21,7 +21,28 @@ edu_vec *edu_vec_create(size_t size, size_t elem_size) {
 }
 
 edu_vec *edu_vec_create_cap(size_t cap, size_t elem_size) {
-    return create(cap, 0, elem_size);
+    return create(0, cap, elem_size);
+}
+
+edu_vec *edu_vec_create_from_buf(void *buf, size_t size, size_t elem_size) {
+    if (elem_size == 0) {
+        return NULL;
+    }
+    if (size != 0 && buf == NULL) {
+        return NULL;
+    }
+
+    edu_vec *vec = malloc(sizeof(*vec));
+    if (!vec) {
+        return NULL;
+    }
+
+    vec->size = size;
+    vec->cap = size;
+    vec->elem_size = elem_size;
+    vec->buf = buf;
+
+    return vec;
 }
 
 void edu_vec_destroy(edu_vec *vec) {
@@ -31,6 +52,97 @@ void edu_vec_destroy(edu_vec *vec) {
 
     free(vec->buf);
     free(vec);
+}
+
+// copy and move semantic
+
+edu_vec *edu_vec_copy(const edu_vec *from) {
+    assert(from);
+
+    edu_vec *to = malloc(sizeof(*to));
+    if (!to) {
+        return NULL;
+    }
+
+    to->size = from->size;
+    to->cap = from->cap;
+    to->elem_size = from->elem_size;
+    to->buf = NULL;
+
+    if (from->cap == 0) {
+        return to;
+    }
+
+    to->buf = malloc(from->cap * from->elem_size);
+    if (!to->buf) {
+        free(to);
+        return NULL;
+    }
+
+    memcpy(to->buf, from->buf, from->size * from->elem_size);
+    return to;
+}
+
+edu_vec *edu_vec_move(edu_vec *from) {
+    assert(from);
+
+    edu_vec *to = malloc(sizeof(*to));
+    if (!to) {
+        return NULL;
+    }
+
+    *to = *from;
+
+    from->size = 0;
+    from->cap = 0;
+    from->buf = NULL;
+
+    return to;
+}
+
+bool edu_vec_copy_assign(edu_vec *to, const edu_vec *from) {
+    assert(to);
+    assert(from);
+
+    if (to == from) {
+        return true;
+    }
+
+    void *new_buf = NULL;
+
+    if (from->cap != 0) {
+        new_buf = malloc(from->cap * from->elem_size);
+        if (!new_buf) {
+            return false;
+        }
+        memcpy(new_buf, from->buf, from->size * from->elem_size);
+    }
+
+    free(to->buf);
+
+    to->buf = new_buf;
+    to->size = from->size;
+    to->cap = from->cap;
+    to->elem_size = from->elem_size;
+
+    return true;
+}
+
+void edu_vec_move_assign(edu_vec *to, edu_vec *from) {
+    assert(to);
+    assert(from);
+
+    if (to == from) {
+        return;
+    }
+
+    free(to->buf);
+
+    *to = *from;
+
+    from->size = 0;
+    from->cap = 0;
+    from->buf = NULL;
 }
 
 // info
@@ -215,11 +327,49 @@ void edu_vec_swap(edu_vec *a, edu_vec *b) {
     *b = tmp;
 }
 
+bool edu_vec_insert(edu_vec *vec, size_t idx, const void *elem) {
+    assert(vec);
+    assert(elem);
+    assert(idx <= vec->size);
+
+    if (!grow_if_needed(vec)) {
+        return false;
+    }
+
+    const size_t es = vec->elem_size;
+    char *base = vec->buf;
+
+    memmove(base + (idx + 1) * es, base + idx * es, (vec->size - idx) * es);
+
+    memcpy(base + idx * es, elem, es);
+    ++vec->size;
+
+    return true;
+}
+
+bool edu_vec_erase(edu_vec *vec, size_t idx, void *out) {
+    assert(vec);
+    assert(idx < vec->size);
+
+    const size_t es = vec->elem_size;
+    char *base = vec->buf;
+
+    if (out) {
+        memcpy(out, base + idx * es, es);
+    }
+
+    memmove(base + idx * es, base + (idx + 1) * es, (vec->size - idx - 1) * es);
+
+    --vec->size;
+    return true;
+}
+
 // relations
 
 bool edu_vec_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp) {
     assert(a);
     assert(b);
+    assert(cmp);
 
     if (a->size != b->size) {
         return false;
@@ -235,8 +385,39 @@ bool edu_vec_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp) {
 bool edu_vec_not_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp) {
     assert(a);
     assert(b);
+    assert(cmp);
 
     return !edu_vec_eq(a, b, cmp);
+}
+
+// algs
+
+void edu_vec_sort(edu_vec *vec, edu_cmp cmp) {
+    assert(vec);
+    assert(cmp);
+
+    qsort(vec->buf, vec->size, vec->elem_size, cmp);
+}
+
+ptrdiff_t edu_vec_find(const edu_vec *vec, const void *key, edu_cmp cmp) {
+    assert(vec);
+    assert(key);
+    assert(cmp);
+
+    for (size_t i = 0; i < vec->size; ++i) {
+        if (cmp(edu_vec_get_const(vec, i), key) == 0) {
+            return (ptrdiff_t) i;
+        }
+    }
+    return -1;
+}
+
+bool edu_vec_contains(const edu_vec *vec, const void *key, edu_cmp cmp) {
+    assert(vec);
+    assert(key);
+    assert(cmp);
+
+    return edu_vec_find(vec, key, cmp) != -1;
 }
 
 // print
@@ -279,7 +460,7 @@ static edu_vec *create(size_t size, size_t cap, size_t elem_size) {
         return vec;
     }
 
-    void *buf = malloc(vec->cap * vec->elem_size);
+    void *buf = calloc(vec->cap, vec->elem_size);
     if (!buf) {
         free(vec);
         return NULL;

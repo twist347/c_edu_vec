@@ -13,9 +13,9 @@
     int edu_cmp_##NAME(const void *lhs, const void *rhs) {           \
         const TYPE a = *(const TYPE *) lhs;                          \
         const TYPE b = *(const TYPE *) rhs;                          \
-        const int a_nan = isnan((long double) a);                    \
-        const int b_nan = isnan((long double) b);                    \
-        if (a_nan | b_nan) {                                         \
+        const int a_nan = isnan(a);                                  \
+        const int b_nan = isnan(b);                                  \
+        if (a_nan || b_nan) {                                        \
             if (a_nan && b_nan) {                                    \
                 return 0;                                            \
             }                                                        \

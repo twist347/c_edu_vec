@@ -1,26 +1,25 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(T edu_vec)
-
-project(${T})
+project(edu_vec)
 
 set(CMAKE_C_STANDARD 11)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(-Wall -Wextra -pedantic)
-
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,leak,undefined")
-
-include_directories(${CMAKE_SOURCE_DIR}/include)
+set(CRITERION_DIR thirdparty/criterion-2.4.3)
 
 add_library(
-        ${T} SHARED
+        edu_vec SHARED
         src/edu_vec.c
         src/edu_print.c
         src/edu_cmp.c
 )
 
-#enable_testing()
+target_include_directories(edu_vec PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(edu_vec PRIVATE -Wall -Wextra -pedantic)
+target_link_libraries(edu_vec PRIVATE m)
 
-add_subdirectory(test)
+option(EDU_VEC_BUILD_TESTS "Build tests" ON)
+if(EDU_VEC_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
