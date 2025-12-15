@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "edu_cmp.h"
-#include "edu_print.h"
+#include "internal/edu_cmp.h"
+#include "internal/edu_print.h"
 
 #ifdef __cplusplus
 extern "C" {

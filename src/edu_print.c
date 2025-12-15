@@ -1,4 +1,4 @@
-#include "edu_print.h"
+#include "../include/internal/edu_print.h"
 
 #include <stdio.h>
 

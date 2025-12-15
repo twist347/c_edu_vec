@@ -1,4 +1,4 @@
-#include "edu_cmp.h"
+#include "../include/internal/edu_cmp.h"
 
 #include <math.h>
 
