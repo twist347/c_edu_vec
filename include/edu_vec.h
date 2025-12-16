@@ -19,7 +19,7 @@ edu_vec *edu_vec_create_cap(size_t cap, size_t elem_size);
 edu_vec *edu_vec_create_from_buf(void *buf, size_t size, size_t elem_size);
 void edu_vec_destroy(edu_vec *vec);
 
-// copy and move semantic
+// "copy and move semantic"
 
 edu_vec *edu_vec_copy(const edu_vec *from);
 edu_vec *edu_vec_move(edu_vec *from);

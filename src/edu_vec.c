@@ -6,15 +6,25 @@
 #include <stdio.h>
 
 struct edu_vec {
-    size_t size;
     size_t elem_size;
+    size_t size;
     size_t cap;
     void *buf;
 };
 
-static edu_vec *create(size_t size, size_t cap, size_t elem_size);
+// internals decls
 
+static edu_vec *create(size_t size, size_t cap, size_t elem_size);
 static bool grow_if_needed(edu_vec *vec);
+static void set_fields(edu_vec *vec, size_t elem_size, size_t size, size_t cap, void *buf);
+static void reset_fields(edu_vec *vec);
+static char *ptr_at(edu_vec *vec, size_t idx);
+static const char *ptr_at_c(const edu_vec *vec, size_t idx);
+static void shift_left(edu_vec *vec, size_t idx);
+static void shift_right(edu_vec *vec, size_t idx);
+static void *alloc_and_copy_buf(const edu_vec *from);
+
+// create/destroy
 
 edu_vec *edu_vec_create(size_t size, size_t elem_size) {
     return create(size, size, elem_size);
@@ -37,10 +47,7 @@ edu_vec *edu_vec_create_from_buf(void *buf, size_t size, size_t elem_size) {
         return NULL;
     }
 
-    vec->size = size;
-    vec->cap = size;
-    vec->elem_size = elem_size;
-    vec->buf = buf;
+    set_fields(vec, elem_size, size, size, buf);
 
     return vec;
 }
@@ -54,7 +61,7 @@ void edu_vec_destroy(edu_vec *vec) {
     free(vec);
 }
 
-// copy and move semantic
+// "copy and move semantic"
 
 edu_vec *edu_vec_copy(const edu_vec *from) {
     assert(from);
@@ -64,22 +71,18 @@ edu_vec *edu_vec_copy(const edu_vec *from) {
         return NULL;
     }
 
-    to->size = from->size;
-    to->cap = from->cap;
-    to->elem_size = from->elem_size;
-    to->buf = NULL;
+    set_fields(to, from->elem_size, from->size, from->cap, NULL);
 
     if (from->cap == 0) {
         return to;
     }
 
-    to->buf = malloc(from->cap * from->elem_size);
+    to->buf = alloc_and_copy_buf(from);
     if (!to->buf) {
         free(to);
         return NULL;
     }
 
-    memcpy(to->buf, from->buf, from->size * from->elem_size);
     return to;
 }
 
@@ -93,9 +96,7 @@ edu_vec *edu_vec_move(edu_vec *from) {
 
     *to = *from;
 
-    from->size = 0;
-    from->cap = 0;
-    from->buf = NULL;
+    reset_fields(from);
 
     return to;
 }
@@ -108,22 +109,14 @@ bool edu_vec_copy_assign(edu_vec *to, const edu_vec *from) {
         return true;
     }
 
-    void *new_buf = NULL;
-
-    if (from->cap != 0) {
-        new_buf = malloc(from->cap * from->elem_size);
-        if (!new_buf) {
-            return false;
-        }
-        memcpy(new_buf, from->buf, from->size * from->elem_size);
+    void *new_buf = alloc_and_copy_buf(from);
+    if (from->cap != 0 && !new_buf) {
+        return false;
     }
 
     free(to->buf);
 
-    to->buf = new_buf;
-    to->size = from->size;
-    to->cap = from->cap;
-    to->elem_size = from->elem_size;
+    set_fields(to, from->elem_size, from->size, from->cap, new_buf);
 
     return true;
 }
@@ -140,9 +133,7 @@ void edu_vec_move_assign(edu_vec *to, edu_vec *from) {
 
     *to = *from;
 
-    from->size = 0;
-    from->cap = 0;
-    from->buf = NULL;
+    reset_fields(from);
 }
 
 // info
@@ -177,14 +168,14 @@ void *edu_vec_get(edu_vec *vec, size_t idx) {
     assert(vec);
     assert(idx < vec->size);
 
-    return (char *) vec->buf + idx * vec->elem_size;
+    return ptr_at(vec, idx);
 }
 
 const void *edu_vec_get_const(const edu_vec *vec, size_t idx) {
     assert(vec);
     assert(idx < vec->size);
 
-    return (const char *) vec->buf + idx * vec->elem_size;
+    return ptr_at_c(vec, idx);
 }
 
 void edu_vec_set(edu_vec *vec, size_t idx, const void *elem) {
@@ -192,7 +183,7 @@ void edu_vec_set(edu_vec *vec, size_t idx, const void *elem) {
     assert(idx < vec->size);
     assert(elem);
 
-    memcpy(edu_vec_get(vec, idx), elem, vec->elem_size);
+    memcpy(ptr_at(vec, idx), elem, vec->elem_size);
 }
 
 void *edu_vec_buf(edu_vec *vec) {
@@ -336,12 +327,8 @@ bool edu_vec_insert(edu_vec *vec, size_t idx, const void *elem) {
         return false;
     }
 
-    const size_t es = vec->elem_size;
-    char *base = vec->buf;
-
-    memmove(base + (idx + 1) * es, base + idx * es, (vec->size - idx) * es);
-
-    memcpy(base + idx * es, elem, es);
+    shift_right(vec, idx);
+    edu_vec_set(vec, idx, elem);
     ++vec->size;
 
     return true;
@@ -351,14 +338,11 @@ bool edu_vec_erase(edu_vec *vec, size_t idx, void *out) {
     assert(vec);
     assert(idx < vec->size);
 
-    const size_t es = vec->elem_size;
-    char *base = vec->buf;
-
     if (out) {
-        memcpy(out, base + idx * es, es);
+        memcpy(out, ptr_at(vec, idx), vec->elem_size);
     }
 
-    memmove(base + idx * es, base + (idx + 1) * es, (vec->size - idx - 1) * es);
+    shift_left(vec, idx);
 
     --vec->size;
     return true;
@@ -436,7 +420,7 @@ void edu_vec_print(const edu_vec *vec, edu_print_func f) {
     printf("]\n");
 }
 
-// internals
+// internals defs
 
 static edu_vec *create(size_t size, size_t cap, size_t elem_size) {
     if (elem_size == 0) {
@@ -451,10 +435,7 @@ static edu_vec *create(size_t size, size_t cap, size_t elem_size) {
         return NULL;
     }
 
-    vec->size = size;
-    vec->elem_size = elem_size;
-    vec->cap = cap;
-    vec->buf = NULL;
+    set_fields(vec, elem_size, size, cap, NULL);
 
     if (cap == 0) {
         return vec;
@@ -478,4 +459,61 @@ static bool grow_if_needed(edu_vec *vec) {
 
     const size_t new_cap = vec->cap == 0 ? 1 : vec->cap * 2;
     return edu_vec_reserve(vec, new_cap);
+}
+
+static void set_fields(edu_vec *vec, size_t elem_size, size_t size, size_t cap, void *buf) {
+    assert(vec);
+
+    vec->elem_size = elem_size;
+    vec->size = size;
+    vec->cap = cap;
+    vec->buf = buf;
+}
+
+static void reset_fields(edu_vec *vec) {
+    assert(vec);
+
+    vec->size = 0;
+    vec->cap = 0;
+    vec->buf = NULL;
+}
+
+static char *ptr_at(edu_vec *vec, size_t idx) {
+    assert(vec);
+
+    return (char *) vec->buf + idx * vec->elem_size;
+}
+
+static const char *ptr_at_c(const edu_vec *vec, size_t idx) {
+    assert(vec);
+
+    return (const char *) vec->buf + idx * vec->elem_size;
+}
+
+static void shift_left(edu_vec *vec, size_t idx) {
+    assert(vec);
+
+    const size_t es = vec->elem_size;
+    memmove(ptr_at(vec, idx), ptr_at(vec, idx + 1), (vec->size - idx - 1) * es);
+}
+
+static void shift_right(edu_vec *vec, size_t idx) {
+    assert(vec);
+
+    const size_t es = vec->elem_size;
+    memmove(ptr_at(vec, idx + 1), ptr_at(vec, idx), (vec->size - idx) * es);
+}
+
+static void *alloc_and_copy_buf(const edu_vec *from) {
+    if (from->cap == 0) {
+        return NULL;
+    }
+
+    void *buf = malloc(from->cap * from->elem_size);
+    if (!buf) {
+        return NULL;
+    }
+
+    memcpy(buf, from->buf, from->size * from->elem_size);
+    return buf;
 }
