@@ -19,7 +19,9 @@ target_compile_options(edu_vec PRIVATE -Wall -Wextra -pedantic)
 target_link_libraries(edu_vec PRIVATE m)
 
 option(EDU_VEC_BUILD_TESTS "Build tests" ON)
-if(EDU_VEC_BUILD_TESTS)
+if (EDU_VEC_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
-endif()
+endif ()
+
+option(EDU_VEC_SANITIZERS "Enable sanitizers for tests" ON)

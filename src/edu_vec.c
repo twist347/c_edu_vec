@@ -24,7 +24,7 @@ static void shift_left(edu_vec *vec, size_t idx);
 static void shift_right(edu_vec *vec, size_t idx);
 static void *alloc_and_copy_buf(const edu_vec *from);
 
-// create/destroy
+/* ---------- create/destroy ---------- */
 
 edu_vec *edu_vec_create(size_t size, size_t elem_size) {
     return create(size, size, elem_size);
@@ -61,7 +61,7 @@ void edu_vec_destroy(edu_vec *vec) {
     free(vec);
 }
 
-// "copy and move semantic"
+/* ---------- copy/move semantic ---------- */
 
 edu_vec *edu_vec_copy(const edu_vec *from) {
     assert(from);
@@ -136,7 +136,7 @@ void edu_vec_move_assign(edu_vec *to, edu_vec *from) {
     reset_fields(from);
 }
 
-// info
+/* ---------- info ---------- */
 
 size_t edu_vec_size(const edu_vec *vec) {
     assert(vec);
@@ -162,7 +162,7 @@ size_t edu_vec_elem_size(const edu_vec *vec) {
     return vec->elem_size;
 }
 
-// access
+/* ---------- access ---------- */
 
 void *edu_vec_get(edu_vec *vec, size_t idx) {
     assert(vec);
@@ -198,7 +198,7 @@ const void *edu_vec_buf_const(const edu_vec *vec) {
     return vec->buf;
 }
 
-// mods
+/* ---------- mods ---------- */
 
 bool edu_vec_push(edu_vec *vec, const void *elem) {
     assert(vec);
@@ -348,7 +348,7 @@ bool edu_vec_erase(edu_vec *vec, size_t idx, void *out) {
     return true;
 }
 
-// relations
+/* ---------- relations ---------- */
 
 bool edu_vec_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp) {
     assert(a);
@@ -374,7 +374,7 @@ bool edu_vec_not_eq(const edu_vec *a, const edu_vec *b, edu_cmp cmp) {
     return !edu_vec_eq(a, b, cmp);
 }
 
-// algs
+/* ---------- algs ---------- */
 
 void edu_vec_sort(edu_vec *vec, edu_cmp cmp) {
     assert(vec);
@@ -404,7 +404,7 @@ bool edu_vec_contains(const edu_vec *vec, const void *key, edu_cmp cmp) {
     return edu_vec_find(vec, key, cmp) != -1;
 }
 
-// print
+/* ---------- print ---------- */
 
 void edu_vec_print(const edu_vec *vec, edu_print_func f) {
     assert(vec);
