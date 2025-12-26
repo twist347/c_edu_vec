@@ -69,6 +69,35 @@ bool edu_vec_contains(const edu_vec *vec, const void *key, edu_cmp cmp);
 
 void edu_vec_print(const edu_vec *vec, edu_print_func f);
 
+/* ---------- macros ---------- */
+
+#define EDU_VEC_CREATE(T, size) \
+    edu_vec_create((size), sizeof(T))
+
+#define EDU_VEC_CREATE_CAP(T, cap) \
+    edu_vec_create_cap((cap), sizeof(T))
+
+#define EDU_VEC_CREATE_FROM_BUF(T, buf, size) \
+    edu_vec_create_from_buf((buf), (size), sizeof(T))
+
+#define EDU_VEC_GET(vec, T, idx) \
+    ((T *) edu_vec_get((vec), (idx)))
+
+#define EDU_VEC_GET_CONST(vec, T, idx) \
+    ((const T *) edu_vec_get_const((vec), (idx)))
+
+#define EDU_VEC_SET(vec, T, idx, val) \
+    do { T _tmp = (val); edu_vec_set((vec), (idx), &_tmp); } while (0)
+
+#define EDU_VEC_PUSH(vec, T, val) \
+    do { T _tmp = (val); edu_vec_push((vec), &_tmp); } while (0)
+
+#define EDU_VEC_BUF(vec, T) \
+    ((T *) edu_vec_buf((vec)))
+
+#define EDU_VEC_BUF_CONST(vec, T) \
+    ((const T *) edu_vec_buf_const((vec)))
+
 #ifdef __cplusplus
 }
 #endif

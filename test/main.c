@@ -399,7 +399,7 @@ Test(vec_api, edu_vec_erase) {
 /* ---------- relations ---------- */
 
 Test(vec_api, edu_vec_eq) {
-    int a[] = {1, 2, 3};
+    const int a[] = {1, 2, 3};
     edu_vec *x = make_int_vec(a, 3);
     edu_vec *y = make_int_vec(a, 3);
 
@@ -474,6 +474,115 @@ Test(vec_api, edu_vec_print) {
     fflush(stdout);
 
     cr_assert_stdout_eq_str("[1, 2, 3]\n");
+
+    edu_vec_destroy(v);
+}
+
+/* ---------- macros ---------- */
+
+Test(vec_macros, EDU_VEC_CREATE_creates_typed_vec) {
+    edu_vec *v = EDU_VEC_CREATE(int, 3);
+    cr_assert_not_null(v);
+
+    cr_assert_eq(edu_vec_size(v), 3);
+    cr_assert_eq(edu_vec_cap(v), 3);
+    cr_assert_eq(edu_vec_elem_size(v), sizeof(int));
+
+    for (size_t i = 0; i < 3; ++i) {
+        cr_assert_eq(*EDU_VEC_GET_CONST(v, int, i), 0);
+    }
+
+    edu_vec_destroy(v);
+}
+
+Test(vec_macros, EDU_VEC_CREATE_CAP_creates_empty_with_capacity) {
+    edu_vec *v = EDU_VEC_CREATE_CAP(int, 5);
+    cr_assert_not_null(v);
+
+    cr_assert_eq(edu_vec_size(v), 0);
+    cr_assert_eq(edu_vec_cap(v), 5);
+    cr_assert_eq(edu_vec_elem_size(v), sizeof(int));
+
+    edu_vec_destroy(v);
+}
+
+Test(vec_macros, EDU_VEC_CREATE_FROM_BUF_wraps_external_buffer) {
+    int *buf = malloc(3 * sizeof(int));
+    cr_assert_not_null(buf);
+
+    buf[0] = 10;
+    buf[1] = 20;
+    buf[2] = 30;
+
+    edu_vec *v = EDU_VEC_CREATE_FROM_BUF(int, buf, 3);
+    cr_assert_not_null(v);
+
+    cr_assert_eq(edu_vec_size(v), 3);
+    cr_assert_eq(edu_vec_cap(v), 3);
+    cr_assert_eq(edu_vec_elem_size(v), sizeof(int));
+    cr_assert_eq(edu_vec_buf(v), (void *)buf);
+
+    cr_assert_eq(*EDU_VEC_GET(v, int, 1), 20);
+
+    EDU_VEC_SET(v, int, 1, 99);
+    cr_assert_eq(buf[1], 99);
+
+    edu_vec_destroy(v);
+}
+
+Test(vec_macros, EDU_VEC_PUSH_and_GET_work) {
+    edu_vec *v = EDU_VEC_CREATE_CAP(int, 8);
+    cr_assert_not_null(v);
+
+    EDU_VEC_PUSH(v, int, 1);
+    EDU_VEC_PUSH(v, int, 2);
+    EDU_VEC_PUSH(v, int, 3);
+
+    cr_assert_eq(edu_vec_size(v), 3);
+    cr_assert_eq(*EDU_VEC_GET(v, int, 0), 1);
+    cr_assert_eq(*EDU_VEC_GET(v, int, 1), 2);
+    cr_assert_eq(*EDU_VEC_GET(v, int, 2), 3);
+
+    const int *p1 = EDU_VEC_GET_CONST(v, int, 1);
+    cr_assert_eq(*p1, 2);
+
+    edu_vec_destroy(v);
+}
+
+Test(vec_macros, EDU_VEC_BUF_and_GET_point_to_same_memory) {
+    edu_vec *v = EDU_VEC_CREATE_CAP(int, 4);
+    cr_assert_not_null(v);
+
+    EDU_VEC_PUSH(v, int, 42);
+    EDU_VEC_PUSH(v, int, 43);
+
+    int *b = EDU_VEC_BUF(v, int);
+    const int *bc = EDU_VEC_BUF_CONST(v, int);
+
+    cr_assert_not_null(b);
+    cr_assert_not_null(bc);
+
+    cr_assert_eq((void *)b, edu_vec_buf(v));
+    cr_assert_eq((const void *)bc, edu_vec_buf_const(v));
+
+    cr_assert_eq((void *)EDU_VEC_GET(v, int, 0), (void *)b);
+    cr_assert_eq((const void *)EDU_VEC_GET_CONST(v, int, 0), (const void *)bc);
+
+    cr_assert_eq(b[0], 42);
+    cr_assert_eq(b[1], 43);
+
+    edu_vec_destroy(v);
+}
+
+Test(vec_macros, EDU_VEC_SET_sets_value) {
+    edu_vec *v = EDU_VEC_CREATE(int, 2);
+    cr_assert_not_null(v);
+
+    EDU_VEC_SET(v, int, 0, 111);
+    EDU_VEC_SET(v, int, 1, 222);
+
+    cr_assert_eq(*EDU_VEC_GET(v, int, 0), 111);
+    cr_assert_eq(*EDU_VEC_GET(v, int, 1), 222);
 
     edu_vec_destroy(v);
 }
